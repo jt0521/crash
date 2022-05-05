@@ -1,3 +1,6 @@
+[![](https://jitpack.io/v/jt0521/crash.svg)](https://jitpack.io/#jt0521/crash)
+
+
 1、添加maven依赖
 
 # implementation 'com.github.jt0521:crash:Tag'
