@@ -39,7 +39,7 @@ publishing {
             //指定group/artifact/version信息
             groupId 'com.github.jt0521'
             artifactId project.name
-            version '1.0'
+            version '1.1.0'
         }
     }
 }
