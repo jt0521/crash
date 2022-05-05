@@ -1,5 +1,7 @@
 1、添加maven依赖
 
+# implementation 'com.github.jt0521:crash:Tag'
+
 2、Application 中初始化
 
 # CrashHandler.init(this,debug);
