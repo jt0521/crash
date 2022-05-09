@@ -1,18 +1,24 @@
 package com.crash.utils;
 
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+
+import android.Manifest;
 import android.app.Application;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.UiThread;
+import androidx.core.app.ActivityCompat;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -50,6 +56,10 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
     private Thread.UncaughtExceptionHandler mDefaultHandler;
     private static Context appContext;
     private static boolean DEBUG;
+    /**
+     * 同时写入外部文件夹
+     */
+    private static boolean mWriteExternal;
 
     public static Context getAppContext() {
         return appContext;
@@ -60,12 +70,13 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
     }
 
     public static void init(Context context) {
-        init(context, true);
+        init(context, true, false);
     }
 
     //在application中初始化
-    public static void init(Context context, boolean debug) {
+    public static void init(Context context, boolean debug, boolean writeExternal) {
         DEBUG = debug;
+        mWriteExternal = writeExternal;
         if (!debug) {
             return;
         }
@@ -157,8 +168,9 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         //获取异常信息
         getExceptionInfo(sb, throwable);
         //保存到文件
-        saveCrash2File(sb.toString());
+        saveCrash2File(mLogPath.getAbsolutePath(), sb.toString());
         delMore();
+        writeExternalStorageDir(sb.toString());
     }
 
     //获取异常信息
@@ -179,13 +191,13 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
 
     //保存到文件
-    private void saveCrash2File(String crashInfo) {
+    private void saveCrash2File(String dir, String crashInfo) {
         try {
             // 用于格式化日期,作为日志文件名的一部分
             SimpleDateFormat formatter = new SimpleDateFormat("yy年M月d日 HH时mm分ss秒", Locale.CHINA);
             String time = formatter.format(new Date());
             String fileName = time + ".log";
-            String filePath = mLogPath.getAbsolutePath() + File.separator + fileName;
+            String filePath = dir + File.separator + fileName;
             FileOutputStream fos = new FileOutputStream(filePath);
             fos.write(crashInfo.getBytes());
             fos.flush();
@@ -256,6 +268,32 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         while (list.size() > 30) {
             File file = list.remove(list.size() - 1);
             file.delete();
+        }
+    }
+
+    /**
+     * 写入外部储存
+     */
+    private void writeExternalStorageDir(String msg) {
+        if (!mWriteExternal) {
+            return;
+        }
+        if (ActivityCompat.checkSelfPermission(appContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PERMISSION_GRANTED) {
+            return;
+        }
+        if (ActivityCompat.checkSelfPermission(appContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PERMISSION_GRANTED) {
+            return;
+        }
+        File file = Environment.getExternalStorageDirectory();
+        if (!file.exists() || file.isDirectory()) {
+            if (!file.exists()) {
+                return;
+            }
+            file = new File(file, Environment.DIRECTORY_DOWNLOADS);
+            if (!file.exists() || file.isFile()) {
+                file.mkdirs();
+            }
+            saveCrash2File(file.getAbsolutePath(), msg);
         }
     }
 }
